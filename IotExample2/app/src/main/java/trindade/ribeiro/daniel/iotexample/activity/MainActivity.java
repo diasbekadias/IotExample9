@@ -30,33 +30,44 @@ import trindade.ribeiro.daniel.iotexample.R;
 
 public class MainActivity extends AppCompatActivity {
 
+    // Define uma variável booleana para armazenar o status da irrigação
     boolean irrigacaoStatus = false;
+    // Define uma variável para armazenar a instância do ViewModel
     MainActivityViewModel vm;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Habilita o modo edge-to-edge
         EdgeToEdge.enable(this);
+        // Define o layout para a atividade
         setContentView(R.layout.activity_main);
+        // Aplica insets da janela para lidar com barras do sistema
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
+        // Configura a toolbar
         Toolbar toolbar = findViewById(R.id.tbMain);
         setSupportActionBar(toolbar);
 
+        // Inicializa o ViewModel
         vm = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
+        // Atualiza o status da irrigação
         updateIrrigacaoStatus();
 
+        // Configura o botão de irrigação e seu "clique"
         Button btnIrrigacao = findViewById(R.id.btnIrrigacao);
         btnIrrigacao.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Desabilita o botão para prevenir múltiplos cliques
                 v.setEnabled(false);
                 LiveData<Boolean> resLD;
+                // Verifica o status atual da irrigação e envia o comando apropriado
                 if (irrigacaoStatus) {
                     resLD = vm.turnIrrigacaoOff();
                 } else {
@@ -65,21 +76,25 @@ public class MainActivity extends AppCompatActivity {
                     vm.enviarComandoInicioSistema(umidadeEscolhida);
                 }
 
+                // Observa o resultado do comando e atualiza a UI conforme necessário
                 resLD.observe(MainActivity.this, new Observer<Boolean>() {
                     @Override
                     public void onChanged(Boolean aBoolean) {
                         updateIrrigacaoStatus();
+                        // Reabilita o botão após a atualização do status
                         v.setEnabled(true);
                     }
                 });
             }
         });
 
+        // Configura o TextView e o SeekBar para umidade e seus listeners
         TextView tvUmidadeRes = findViewById(R.id.tvUmidadeRes);
         SeekBar skUmidade = findViewById(R.id.skUmidade);
         skUmidade.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                // Atualiza o TextView para exibir o progresso atual do SeekBar
                 tvUmidadeRes.setText(String.valueOf(progress));
             }
 
@@ -88,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                // Define o novo valor de umidade no ViewModel quando o usuário para de ajustar
                 int newUmidade = seekBar.getProgress();
                 vm.setUmidade(newUmidade);
             }
@@ -97,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
+        // Layout do menu
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_activity_tb, menu);
         return true;
@@ -104,17 +121,22 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        // Lida com as seleções de itens do menu
         if (item.getItemId() == R.id.opConfig) {
+            // Layout do diálogo de configuração
             LayoutInflater inflater = getLayoutInflater();
             View configDlgView = inflater.inflate(R.layout.config_dlg, null);
+            // Obtém o EditText para o endereço ESP32 e define seu texto a partir da configuração
             EditText etESP32Address = configDlgView.findViewById(R.id.etESP32Address);
             etESP32Address.setText(Config.getESP32Address(this));
 
+            // Constrói e exibe o diálogo de configuração
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setView(configDlgView);
             builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int id) {
+                    // Salva o novo endereço ESP32 na configuração quando o usuário clica em "Ok"
                     String esp32Address = etESP32Address.getText().toString();
                     Config.setESP32Address(MainActivity.this, esp32Address);
                 }
@@ -129,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (item.getItemId() == R.id.opUpdate) {
+            // Atualiza o status da irrigação quando o usuário seleciona o item de menu de atualização
             updateIrrigacaoStatus();
             return true;
         }
@@ -136,13 +159,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void updateIrrigacaoStatus() {
+        // Obtém referências para o TextView e o botão de status da irrigação
         TextView tvIrrigacaoStatusRes = findViewById(R.id.tvIrrigacaoStatusRes);
         Button btnIrrigacao = findViewById(R.id.btnIrrigacao);
+        // Observa o LiveData de status da irrigação do ViewModel
         LiveData<Boolean> irrigacaoStatusLD = vm.getIrrigacaoStatus();
 
         irrigacaoStatusLD.observe(this, new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
+                // Atualiza a UI com base no novo status da irrigação
                 irrigacaoStatus = aBoolean;
                 if (irrigacaoStatus) {
                     tvIrrigacaoStatusRes.setText("Ligada");
@@ -154,12 +180,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Obtém referências para o TextView e o SeekBar de umidade
         TextView tvUmidadeRes = findViewById(R.id.tvUmidadeRes);
         LiveData<Integer> umidadeResLD = vm.getUmidade();
 
         umidadeResLD.observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer integer) {
+                // Atualiza o TextView com o novo valor de umidade
                 tvUmidadeRes.setText(String.valueOf(integer));
             }
         });
@@ -170,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
         umidadeLD.observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer integer) {
+                // Atualiza o progresso do SeekBar com o novo valor de umidade
                 skUmidade.setProgress(integer);
             }
         });
